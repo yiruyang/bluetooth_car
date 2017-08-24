@@ -1,0 +1,71 @@
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/bluetooth_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textColor="#404040"
+        android:textSize="20sp"
+        android:text="蓝牙开关:"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="10dp" />
+
+    <Switch
+        android:id="@+id/bluetooth_open"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:switchMinWidth="20dp"
+        android:track="@drawable/track"
+        android:thumb="@drawable/thumb"
+        android:textOn=""
+        android:textOff=""
+        android:padding="15dp"
+        android:layout_toRightOf="@+id/bluetooth_text"
+        android:layout_centerVertical="true"/>
+
+    <Button
+        android:id="@+id/bluetooth_search"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="蓝牙搜索"
+        android:textSize="20sp"
+        android:padding="5dp"
+        android:layout_marginLeft="15dp"
+        android:layout_centerVertical="true"
+        android:background="@drawable/button_shape"
+        android:layout_alignTop="@+id/bluetooth_connect"
+        android:layout_toRightOf="@+id/bluetooth_open"
+        android:layout_toEndOf="@+id/bluetooth_open" />
+
+    <ImageView
+        android:id="@+id/bluetooth_image"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@mipmap/bluetooth"
+        android:layout_centerVertical="true"
+        android:layout_toRightOf="@+id/bluetooth_search"/>
+
+
+    <Spinner
+        android:id="@+id/bluetooth_spinner"
+        android:layout_width="60dp"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="20dp"
+        android:layout_toRightOf="@+id/bluetooth_image"></Spinner>
+
+    <Button
+        android:id="@+id/bluetooth_connect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/bluetooth_spinner"
+        android:layout_centerVertical="true"
+        android:text="连接"
+        android:textSize="20sp"
+        android:padding="5dp"
+        android:background="@drawable/button_shape"/>
+</RelativeLayout>
