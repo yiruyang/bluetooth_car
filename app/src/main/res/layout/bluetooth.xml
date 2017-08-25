@@ -50,13 +50,19 @@
         android:layout_toRightOf="@+id/bluetooth_search"/>
 
 
+    <TextView
+        android:id = "@+id/textView_bluetooth"
+        android:layout_width = "wrap_content"
+        android:layout_height = "wrap_content"
+        android:layout_toRightOf="@+id/bluetooth_image"
+        android:layout_centerVertical="true"
+        />
     <Spinner
         android:id="@+id/bluetooth_spinner"
-        android:layout_width="60dp"
+        android:layout_width="40dp"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
-        android:layout_marginTop="20dp"
-        android:layout_toRightOf="@+id/bluetooth_image"></Spinner>
+        android:layout_toRightOf="@+id/textView_bluetooth"/>
 
     <Button
         android:id="@+id/bluetooth_connect"
