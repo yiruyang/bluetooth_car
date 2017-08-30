@@ -55,9 +55,9 @@
                     android:layout_height="match_parent">
 
                     <Button
+                        android:id="@+id/ultrasonic_distance"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
-                        android:text="11.22"
                         android:textSize="17sp"
                         android:layout_centerInParent="true"
                         android:background="@drawable/button_cicular"/>
@@ -99,9 +99,9 @@
                     android:layout_height="match_parent">
 
                     <Button
+                        android:id="@+id/voltage"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
-                        android:text="24"
                         android:textSize="17sp"
                         android:layout_centerInParent="true"
                         android:background="@drawable/button_cicular"/>
