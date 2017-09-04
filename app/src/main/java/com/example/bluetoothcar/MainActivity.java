@@ -9,8 +9,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.nfc.Tag;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -39,15 +40,13 @@ import static android.R.layout.simple_spinner_dropdown_item;
 public class MainActivity extends Activity{
 
     private final String TAG = "MainActivity";
+    private final int MSG_SUCCESS = 1 ;
+    private final UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     // Message types sent from the BluetoothChatService Handler
-    public static final int MESSAGE_STATE_CHANGE = 1;
-    public static final int MESSAGE_READ = 2;
-    public static final int MESSAGE_WRITE = 3;
-    public static final int MESSAGE_DEVICE_NAME = 4;
-    public static final int MESSAGE_TOAST = 5;
 
-    private BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+    private BluetoothAdapter bluetoothAdapter;
     BluetoothDevice mmDevice;
     BluetoothSocket mmSocket;
     public byte[] message = new byte[1];
@@ -68,6 +67,8 @@ public class MainActivity extends Activity{
     private ImageView up_control;
     private ImageView right_control;
     private ImageView down_control;
+
+    private ConnectThread connBonded;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +92,8 @@ public class MainActivity extends Activity{
         ultrasonic_distance = (Button) findViewById(R.id.ultrasonic_distance);
         voltage = (Button) findViewById(R.id.voltage);
 
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
         mArrayAdapter = new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_spinner_item,deviceList);
         mArrayAdapter.setDropDownViewResource(simple_spinner_dropdown_item);
         bluetooth_spinner.setAdapter(mArrayAdapter);
@@ -101,6 +104,9 @@ public class MainActivity extends Activity{
         up_control.setOnTouchListener(imageListener);
         down_control.setOnTouchListener(imageListener);
 
+        /**
+         *  开启蓝牙
+         */
         bluetooth_on_off.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -108,11 +114,11 @@ public class MainActivity extends Activity{
                     if(bluetoothAdapter==null){
                         Toast.makeText(MainActivity.this,"不支持蓝牙",Toast.LENGTH_LONG).show();
                         finish();
-                    }else if(!bluetoothAdapter.isEnabled()){
+                    }else if(!bluetoothAdapter.isEnabled()){  // 蓝牙未开启
                         Log.d("true","开启蓝牙！");
                         Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                         startActivityForResult(intent,REQUEST_ENABLE_BT);
-                    } else{
+                    } else{   // 蓝牙已经开启
                         Toast.makeText(MainActivity.this,"已经打开！！！",Toast.LENGTH_SHORT).show();
                     }
                 }else if (!bluetooth_on_off.isChecked()){
@@ -147,12 +153,16 @@ public class MainActivity extends Activity{
         });
 
 
-        //绑定连接蓝牙
+        //连接蓝牙
         bluetooth_connect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, (String) textView_bluetooth.getText());
-                if (mmDevice.getName().equalsIgnoreCase((String) textView_bluetooth.getText())) {
+
+                bluetoothAdapter.cancelDiscovery();
+
+//                if (mmDevice == null)
+//                   return;
+                if (mmDevice.getName().equalsIgnoreCase(textView_bluetooth.getText().toString())) {
                     // 获取蓝牙设备的连接状态
                     int connectState = mmDevice.getBondState();
                     switch (connectState) {
@@ -166,12 +176,17 @@ public class MainActivity extends Activity{
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
-                            new ConnectThread(mmDevice).start();
+                            Log.d(TAG, "onClick: " + mmDevice.getName());
+                            ConnectThread connUnBonded = new ConnectThread(mmDevice);
+                            connUnBonded.start();
                             break;
                         // 已配对
                         case BluetoothDevice.BOND_BONDED:
-                            new ConnectThread(mmDevice).start();
-                            Log.d("BlueToothTestActivity", "连接成功......");
+                            // 建立连接
+                            // mmDevice   根绝device来创建 socket
+                            Log.d(TAG, "onClick: " + mmDevice.getName());
+                            connBonded = new ConnectThread(mmDevice);
+                            connBonded.start();
                             break;
                         case BluetoothDevice.BOND_BONDING://正在配对
                             Log.d("BlueToothTestActivity", "正在配对......");
@@ -182,6 +197,25 @@ public class MainActivity extends Activity{
         });
     }
 
+    private Handler mHandler = new Handler() {
+        public void handleMessage (Message msg) {//此方法在ui线程运行
+            switch(msg.what) {
+                case MSG_SUCCESS:
+                    mmSocket = (BluetoothSocket) msg.obj;
+                    // 执行
+                    Log.d(TAG, "handleMessage:  socket has been post be main thread!");
+//                    if (connBonded != null ){
+//                        connBonded.start();
+//                    }
+                    break;
+            }
+        }
+    };
+
+
+    //    // Register the BroadcastReceiver
+//    IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+//    registerReceiver(mReceiver, filter); // Don't forget to unregister during onDestroy
     @Override
     protected void onResume() {
         super.onResume();
@@ -189,9 +223,6 @@ public class MainActivity extends Activity{
         //广播接收器
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(BluetoothDevice.ACTION_FOUND);// 注册广播接收器，接收并处理搜索结果
-        intentFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);//状态改变
-        intentFilter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);//行动扫描模式改变了
-        intentFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);//动作状态发生了变化
         this.registerReceiver(mFoundReceiver, intentFilter);
     }
 
@@ -207,6 +238,7 @@ public class MainActivity extends Activity{
         bluetoothAdapter.disable();
     }
 
+
     /**
      *  广播接收器
      */
@@ -217,14 +249,15 @@ public class MainActivity extends Activity{
             //找到设备
             if (BluetoothDevice.ACTION_FOUND.equals(action)){
                 mmDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                Toast.makeText(MainActivity.this, "发现蓝牙设备！", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "发现新设备！", Toast.LENGTH_SHORT).show();
                 Log.d("tag", "onReceive: " + mmDevice.getName());
                 deviceList.add(mmDevice.getName());
+                Log.d(TAG,mmDevice.getName());
                 //刷新
                 mArrayAdapter.notifyDataSetChanged();
-            }else{
+            }/*else{
                 context.unregisterReceiver(this);
-            }
+            }*/
         }
     }
 
@@ -239,8 +272,6 @@ public class MainActivity extends Activity{
             BluetoothServerSocket tmp = null;
             try {
                 // MY_UUID is the app's UUID string, also used by the client code
-                final String SPP_UUID = "4C5AFAF7-C886-1A67-0F36-69665C5AA70B";
-                UUID uuid = UUID.fromString(SPP_UUID);
                 tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord("bluetooth", uuid);
             } catch (IOException e) { }
             mmServerSocket = tmp;
@@ -276,44 +307,49 @@ public class MainActivity extends Activity{
         }
     }
 
-    //连接为客户端
+    /**
+     *  构造方法  创建一个clientScoket
+     */
     private class ConnectThread extends Thread {
-        private  BluetoothSocket mSocket;
-        private  BluetoothDevice mDevice;
+        private final BluetoothSocket mSocket;
 
+        //        private  final BluetoothDevice mDevice;
         public ConnectThread(BluetoothDevice device) {
             // Use a temporary object that is later assigned to mmSocket,
             // because mmSocket is final
             Log.d(TAG,"连接线程开启！！");
             BluetoothSocket tmp = null;
-            mDevice = device;
-
             // Get a BluetoothSocket to connect with the given BluetoothDevice
             try {
-                final String SPP_UUID = "4C5AFAF7-C886-1A67-0F36-69665C5AA70B";
-                UUID uuid = UUID.fromString(SPP_UUID);
                 // MY_UUID is the app's UUID string, also used by the server code
                 tmp = device.createRfcommSocketToServiceRecord(uuid);
-            } catch (IOException e) { }
+//                Log.d(TAG,"tmp："+String.valueOf(tmp));
+            } catch (IOException e) {
+            }
             mSocket = tmp;
+            // 异步
+            mHandler.obtainMessage(MSG_SUCCESS,mSocket).sendToTarget();
         }
 
         public void run() {
             // Cancel discovery because it will slow down the connection
-            BluetoothAdapter.getDefaultAdapter().cancelDiscovery();
+            bluetoothAdapter.cancelDiscovery();
+            // Connect the device through the socket. This will block
+            // until it succeeds or throws an exception
+            Log.d(TAG,"run()........");
             try {
-                // Connect the device through the socket. This will block
-                // until it succeeds or throws an exception
                 mSocket.connect();
-            } catch (IOException connectException) {
-                // Unable to connect; close the socket and get out
-                Log.d(TAG, "错误");
-                try {
-                    mSocket.close();
-                } catch (IOException closeException) { }
-                return;
+                Log.d(TAG, "连接成功......");
+            } catch (IOException e) {
+                Log.d(TAG, "run: " + e.toString());
+                if (mSocket.isConnected()){
+                    try {
+                        mSocket.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                }
             }
-            // Do work to manage the connection (in a separate thread)
         }
 
         /** Will cancel an in-progress connection, and close the socket */
@@ -372,7 +408,7 @@ public class MainActivity extends Activity{
                         Log.d(TAG,""+message[0]);
                     }
                     if (event.getAction() == MotionEvent.ACTION_DOWN){
-                        message[0] = (byte) 0x44;
+                        message[0] = (byte) 0xc2;
                         blueSendData(message);
                         Log.d(TAG,""+message[0]);
                     }
